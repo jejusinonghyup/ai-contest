@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>제1회 제주시농협 AI 공모전 · 발표 순서 추첨</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3f5f2;--card:#fff;--ink:#15201a;--muted:#66726a;--line:#dde3dd;--pri:#0b7a43;--pri-soft:#e3f2e9;--warn-soft:#fff0e6;--dark:#0f2a1c;--danger:#b42318;--r:14px}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Noto Sans KR',system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit;color:inherit}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 20px;background:var(--dark);color:#fff;flex-wrap:wrap}
+.brand{font-weight:900;font-size:18px}.sub{font-size:13px;opacity:.75}
+.who{font-size:13px;display:flex;gap:8px;align-items:center}
+.wrap{max-width:1200px;margin:0 auto;padding:18px 16px 60px;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.card h2{margin:0 0 12px;font-size:17px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.step{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--pri);color:#fff;align-items:center;justify-content:center;font-size:14px}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;background:var(--pri);color:#fff;white-space:nowrap}
+.btn.ghost{background:transparent;color:inherit;border:1px solid currentColor}
+.btn.soft{background:var(--pri-soft);color:var(--pri)}
+.btn.sm{padding:6px 10px;font-size:13px;border-radius:8px}
+.btn.huge{padding:18px 30px;font-size:20px}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.muted{color:var(--muted);font-size:13px}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;background:#eef1ee;color:#46524a}
+.badge.r1{background:#fff4d1;color:#8a6400}
+label.f{display:block;font-size:13px;font-weight:700;margin:10px 0 4px}
+input[type=text],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#fff}
+textarea{min-height:200px;resize:vertical;font-size:14px;line-height:1.6}
+code{background:#eef1ee;padding:1px 5px;border-radius:5px;font-size:12px}
+.notice{padding:12px 14px;border-radius:10px;background:var(--pri-soft);font-size:14px}
+.notice.warn{background:var(--warn-soft);color:#7a2e08}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;word-break:break-all}
+/* stage */
+#stage{background:#0b1a12;color:#eef6f0;border-radius:18px;padding:22px;display:none}
+#stage.show{display:block}
+.st-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:900px){.st-cols{grid-template-columns:1fr}}
+.st-col{background:#12271b;border-radius:14px;padding:14px}
+.st-col h3{margin:0 0 10px;color:#9fe0b8;font-size:17px}
+.st-col h3 small{color:#eef6f0;opacity:.6;font-weight:500}
+.slot{display:grid;grid-template-columns:40px 1fr;gap:10px;align-items:center;padding:9px 6px;border-bottom:1px solid #1f3a2a;transition:background .3s}
+.slot .no{width:32px;height:32px;border-radius:50%;background:#1f3a2a;display:flex;align-items:center;justify-content:center;font-weight:900}
+.slot .nm{font-weight:700;font-size:17px;min-height:24px}
+.slot .tt{font-size:12px;opacity:.6}
+.slot.rolling .nm{color:#ffd54a;filter:blur(.4px)}
+.slot.done{animation:flash .7s}
+.slot.done .no{background:var(--pri)}
+@keyframes flash{0%{background:#2f6a47}100%{background:transparent}}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:12px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#15201a;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;z-index:99}
+.toast.err{background:var(--danger)}
+#printArea{display:none}
+@media print{
+  body{background:#fff}
+  .top,.wrap>*:not(#resultCard),#resultCard .noprint{display:none!important}
+  #resultCard{border:0;padding:0}
+}
+</style>
+</head>
+<body>
+<header class="top"><div><div class="brand" id="hTitle">제1회 제주시농협 AI 공모전 · 발표 순서 추첨</div><div class="sub">검증 가능한 공정 추첨 · 시드 공개 방식</div></div>
+<div class="who" id="who"></div></header>
+
+<main class="wrap">
+  <div id="fbNotice"></div>
+
+  <section class="card">
+    <h2><span class="step">1</span> 참가 명단 입력</h2>
+    <p class="muted" style="margin-top:-4px">한 줄에 한 팀: <code>팀명(이름) | 작품명 | 접수차수</code> — 엑셀에서 3개 열을 복사해 붙여 넣어도 됩니다(탭 구분). 접수차수는 <code>1</code> 또는 <code>2</code>(1차/2차).</p>
+    <div class="cols" id="inputs"></div>
+    <div class="row" style="margin-top:10px"><button class="btn soft sm" id="loadTeams">심사 시스템에 등록된 명단 불러오기</button><span class="muted" id="parseInfo"></span></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">2</span> 추첨 설정</h2>
+    <div class="cols">
+      <div>
+        <label class="f">부문 진행 순서</label>
+        <select id="catMode"><option value="fixed">고정 순서로 진행</option><option value="random">부문 순서도 추첨</option></select>
+        <div id="fixedOrder"></div>
+      </div>
+      <div>
+        <label class="f">추첨 시드 (공개용 난수)</label>
+        <input type="text" id="seed" class="mono">
+        <div class="row" style="margin-top:6px"><button class="btn ghost sm" id="newSeed">새 시드 생성</button></div>
+        <p class="muted">같은 명단 + 같은 시드면 누가 계산해도 같은 순서가 나옵니다. 지난 추첨 결과를 검증할 때는 그때의 시드를 입력하세요.</p>
+      </div>
+      <div>
+        <label class="f">공개 속도</label>
+        <select id="speed"><option value="1500">천천히 (현장 발표용)</option><option value="800" selected>보통</option><option value="300">빠르게</option><option value="0">즉시</option></select>
+        <label class="f">입력 명단 지문 (SHA-256)</label>
+        <div class="mono muted" id="inputHash">-</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:18px;justify-content:center"><button class="btn huge" id="drawBtn">🎲 발표 순서 추첨</button></div>
+  </section>
+
+  <section id="stage">
+    <div class="row" style="justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:22px;font-weight:900">발표 순서 추첨 결과</div>
+      <button class="btn ghost sm" id="skipBtn">바로 모두 공개</button>
+    </div>
+    <div class="st-cols" id="stCols"></div>
+  </section>
+
+  <section class="card" id="resultCard" style="display:none">
+    <h2>📄 최종 발표 순서표</h2>
+    <div class="muted" id="resultMeta"></div>
+    <div style="overflow-x:auto;margin-top:10px"><table id="resultTable"></table></div>
+    <div class="row noprint" style="margin-top:14px">
+      <button class="btn" id="saveBtn">✅ 이 순서로 확정 · 심사 시스템에 반영</button>
+      <button class="btn soft" id="printBtn">인쇄</button>
+      <button class="btn soft" id="csvBtn">CSV 다운로드</button>
+    </div>
+  </section>
+
+  <section class="card" id="historyCard" style="display:none">
+    <h2>🔍 추첨 이력 · 검증</h2>
+    <p class="muted" style="margin-top:-4px">확정된 추첨은 시드·입력 명단과 함께 공개 기록됩니다. ‘검증’을 누르면 브라우저에서 다시 계산해 결과가 같은지 확인합니다.</p>
+    <div style="overflow-x:auto"><table id="historyTable"></table></div>
+  </section>
+</main>
+
+<script type="module">
+import { firebaseConfig, SUPER_ADMINS, CATEGORIES } from './config.js';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const catName = id => CATEGORIES.find(c => c.id === id)?.name || id;
+const lc = s => String(s||'').trim().toLowerCase();
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function toast(msg, type=''){ const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 2800); }
+
+/* ---------------- 결정적 추첨 알고리즘 ----------------
+   rnd(seed,label,i) = SHA-256("seed|label|i") 앞 48비트 / 2^48
+   Fisher–Yates 셔플 (i = n-1 → 1, j = floor(rnd × (i+1)))
+   입력 명단은 정렬된 표준형(canonical)으로 만들어 입력 순서와 무관하게 동일 결과 */
+async function sha256hex(str){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,'0')).join(''); }
+async function rnd(seed, label, i){ const h = await sha256hex(`${seed}|${label}|${i}`); return parseInt(h.slice(0,12), 16) / 2**48; }
+async function shuffle(arr, seed, label){ const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(await rnd(seed, label, i) * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const cmp = (a, b) => { const x = JSON.stringify(a), y = JSON.stringify(b); return x < y ? -1 : x > y ? 1 : 0; };
+
+async function computeDraw(canonical, seed){
+  const c = JSON.parse(canonical);
+  const catOrder = c.catMode === 'random' ? await shuffle(c.catOrder, seed, 'CATEGORY') : c.catOrder;
+  const flat = []; let seq = 0;
+  for (const cat of catOrder) {
+    const list = await shuffle(c.cats[cat] || [], seed, cat);
+    list.forEach((e, k) => flat.push({ seq: ++seq, catSeq: k + 1, category: cat, name: e[0], title: e[1], round: e[2] }));
+  }
+  return { catOrder, flat };
+}
+
+/* ---------------- 입력 ---------------- */
+$('#inputs').innerHTML = CATEGORIES.map(c => `<div><label class="f">${esc(c.name)} <span class="muted" id="cnt-${c.id}">0팀</span></label>
+  <textarea id="in-${c.id}" placeholder="홍길동 | AI 영농일지 도우미 | 1&#10;김영희 | 감귤 병해충 판별기 | 2"></textarea></div>`).join('');
+function parseCat(id){
+  return $(`#in-${id}`).value.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+    const p = l.split(/\t|\|/).map(s => s.trim());
+    const r = (p[2] || '').match(/[12]/); return { name: p[0], title: p[1] || '', round: r ? Number(r[0]) : 2, roundMissing: !r };
+  }).filter(e => e.name);
+}
+function renderFixed(){
+  $('#fixedOrder').innerHTML = $('#catMode').value === 'fixed' ? CATEGORIES.map((_, i) => `<div class="row" style="margin-top:6px"><span class="muted" style="width:36px">${i+1}번째</span>
+    <select data-fo="${i}" style="flex:1">${CATEGORIES.map((c, k) => `<option value="${c.id}" ${k===i?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>`).join('') : '<p class="muted">부문의 진행 순서도 시드로 추첨합니다.</p>';
+}
+renderFixed(); $('#catMode').onchange = () => { renderFixed(); updateInfo(); };
+function canonical(){
+  const mode = $('#catMode').value;
+  const order = mode === 'fixed' ? [...document.querySelectorAll('[data-fo]')].map(s => s.value) : CATEGORIES.map(c => c.id);
+  const cats = {}; for (const c of CATEGORIES) cats[c.id] = parseCat(c.id).map(e => [e.name, e.title, e.round]).sort(cmp);
+  return JSON.stringify({ v: 1, catMode: mode, catOrder: order, cats });
+}
+async function updateInfo(){
+  let total = 0, miss = 0;
+  for (const c of CATEGORIES) { const l = parseCat(c.id); total += l.length; miss += l.filter(e => e.roundMissing).length; $(`#cnt-${c.id}`).textContent = `${l.length}팀`; }
+  $('#parseInfo').innerHTML = `총 ${total}팀` + (miss ? ` · <b style="color:#b45309">접수차수 미입력 ${miss}팀 → 2차로 처리</b>` : '');
+  $('#inputHash').textContent = total ? await sha256hex(canonical()) : '-';
+}
+$('#inputs').addEventListener('input', updateInfo);
+document.addEventListener('change', e => { if (e.target.dataset.fo != null) updateInfo(); });
+const newSeed = () => { const b = crypto.getRandomValues(new Uint8Array(16)); $('#seed').value = [...b].map(x => x.toString(16).padStart(2,'0')).join(''); };
+newSeed(); $('#newSeed').onclick = newSeed;
+
+/* ---------------- 추첨 & 공개 연출 ---------------- */
+let current = null, skip = false;
+$('#skipBtn').onclick = () => { skip = true; };
+$('#drawBtn').onclick = async () => {
+  const canon = canonical(); const c = JSON.parse(canon);
+  if (c.catMode === 'fixed' && new Set(c.catOrder).size !== CATEGORIES.length) return toast('부문 진행 순서가 중복되었습니다', 'err');
+  if (!Object.values(c.cats).some(l => l.length)) return toast('참가 명단을 입력하세요', 'err');
+  const seed = $('#seed').value.trim(); if (!seed) return toast('시드를 입력하세요', 'err');
+  $('#drawBtn').disabled = true; skip = false; $('#resultCard').style.display = 'none';
+  const res = await computeDraw(canon, seed);
+  current = { canonical: canon, seed, inputHash: await sha256hex(canon), ...res };
+  await reveal(current);
+  renderResult(current);
+  $('#drawBtn').disabled = false;
+};
+async function reveal(d){
+  const st = $('#stage'); st.classList.add('show'); st.scrollIntoView({ behavior: 'smooth' });
+  const by = cat => d.flat.filter(f => f.category === cat);
+  $('#stCols').innerHTML = d.catOrder.map((cat, ci) => `<div class="st-col"><h3>${ci+1}. ${esc(catName(cat))} <small>${by(cat).length}팀</small></h3>
+    ${by(cat).map(f => `<div class="slot" data-seq="${f.seq}"><div class="no">${f.catSeq}</div><div><div class="nm">?</div><div class="tt">&nbsp;</div></div></div>`).join('') || '<div class="tt">참가팀 없음</div>'}</div>`).join('');
+  const speed = Number($('#speed').value);
+  for (const cat of d.catOrder) {
+    const list = by(cat); const remaining = list.map(f => f.name);
+    for (const f of list) {
+      const el = document.querySelector(`.slot[data-seq="${f.seq}"]`);
+      if (speed && !skip) {
+        el.classList.add('rolling'); const t0 = Date.now();
+        while (Date.now() - t0 < speed && !skip) { el.querySelector('.nm').textContent = remaining[Math.floor(Math.random() * remaining.length)]; await sleep(60); }
+        el.classList.remove('rolling');
+      }
+      el.querySelector('.nm').innerHTML = `${esc(f.name)} ${Number(f.round)===1?'<span class="badge r1">1차</span>':''}`;
+      el.querySelector('.tt').textContent = f.title || ' ';
+      el.classList.add('done'); remaining.splice(remaining.indexOf(f.name), 1);
+      if (speed && !skip) await sleep(250);
+    }
+  }
+}
+function renderResult(d){
+  $('#resultCard').style.display = '';
+  $('#resultMeta').innerHTML = `추첨 시각 ${new Date().toLocaleString('ko-KR')} · 시드 <span class="mono">${esc(d.seed)}</span><br>입력 명단 지문 <span class="mono">${esc(d.inputHash)}</span>`;
+  $('#resultTable').innerHTML = `<thead><tr><th>발표 순서</th><th>부문</th><th>부문 내</th><th>팀명</th><th>작품명</th><th>접수</th></tr></thead><tbody>
+  ${d.flat.map(f => `<tr><td><b>${f.seq}</b></td><td>${esc(catName(f.category))}</td><td>${f.catSeq}</td><td>${esc(f.name)}</td><td>${esc(f.title)}</td><td>${Number(f.round)===1?'<span class="badge r1">1차</span>':'2차'}</td></tr>`).join('')}</tbody>`;
+}
+$('#printBtn').onclick = () => window.print();
+$('#csvBtn').onclick = () => {
+  if (!current) return;
+  const rows = [['발표순서','부문','부문내순서','팀명','작품명','접수차수'], ...current.flat.map(f => [f.seq, catName(f.category), f.catSeq, f.name, f.title, Number(f.round)===1?'1차':'2차']), [], ['시드', current.seed], ['입력명단지문', current.inputHash]];
+  const csv = '\uFEFF' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = '발표순서.csv'; a.click();
+};
+
+/* ---------------- Firebase (선택) ---------------- */
+let fb = null, user = null, isAdmin = false;
+if (!firebaseConfig.apiKey) {
+  $('#fbNotice').innerHTML = `<div class="notice warn">Firebase가 설정되지 않아 <b>로컬 추첨 모드</b>로 동작합니다. 추첨·인쇄·CSV는 가능하지만 심사 시스템 반영과 이력 저장은 되지 않습니다.</div>`;
+  $('#saveBtn').style.display = 'none';
+} else {
+  const [{ initializeApp }, A, F] = await Promise.all([
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')
+  ]);
+  const app = initializeApp(firebaseConfig);
+  fb = { A, F, auth: A.getAuth(app), db: F.getFirestore(app) };
+  const { doc, getDoc, collection, query, orderBy, onSnapshot } = F;
+  onSnapshot(doc(fb.db, 'config', 'public'), s => { if (s.exists() && s.data().title) { $('#hTitle').textContent = `${s.data().title} · 발표 순서 추첨`; document.title = $('#hTitle').textContent; } });
+  A.onAuthStateChanged(fb.auth, async u => {
+    user = u && !u.isAnonymous ? u : null; isAdmin = false;
+    if (user) {
+      const e = lc(user.email); isAdmin = SUPER_ADMINS.map(lc).includes(e);
+      if (!isAdmin) { try { const a = await getDoc(doc(fb.db, 'config', 'access')); isAdmin = (a.data()?.adminEmails || []).map(lc).includes(e); } catch(_) {} }
+    }
+    $('#who').innerHTML = user ? `${esc(user.email)} ${isAdmin ? '<span class="badge">관리자</span>' : '<span class="badge">권한 없음</span>'} <button class="btn ghost sm" id="logoutBtn">로그아웃</button>`
+                               : `<button class="btn ghost sm" id="loginBtn">관리자 로그인</button>`;
+    $('#loginBtn')?.addEventListener('click', () => A.signInWithPopup(fb.auth, new A.GoogleAuthProvider()).catch(e => toast(e.message, 'err')));
+    $('#logoutBtn')?.addEventListener('click', () => A.signOut(fb.auth));
+  });
+  $('#historyCard').style.display = '';
+  onSnapshot(query(collection(fb.db, 'draws'), orderBy('createdAt', 'desc')), s => {
+    const rows = s.docs.map(d => ({ id: d.id, ...d.data() }));
+    window.__draws = rows;
+    $('#historyTable').innerHTML = rows.length ? `<thead><tr><th>확정 시각</th><th>팀 수</th><th>시드</th><th>명단 지문</th><th></th></tr></thead><tbody>
+      ${rows.map(r => `<tr><td>${r.createdAt?.toDate?.().toLocaleString('ko-KR') || '-'}<div class="muted">${esc(r.by || '')}</div></td><td>${r.result?.length || 0}</td>
+      <td class="mono">${esc(r.seed)}</td><td class="mono">${esc((r.inputHash||'').slice(0,16))}…</td>
+      <td><button class="btn soft sm" data-verify="${r.id}">검증</button> <span data-vres="${r.id}"></span></td></tr>`).join('')}</tbody>` : '<tbody><tr><td class="muted">아직 확정된 추첨이 없습니다.</td></tr></tbody>';
+  });
+}
+
+document.addEventListener('click', async e => {
+  const id = e.target.dataset?.verify; if (!id) return;
+  const r = (window.__draws || []).find(x => x.id === id); if (!r) return;
+  const out = document.querySelector(`[data-vres="${id}"]`); out.textContent = '계산 중…';
+  const hashOk = (await sha256hex(r.canonical)) === r.inputHash;
+  const re = await computeDraw(r.canonical, r.seed);
+  const strip = l => JSON.stringify(l.map(f => [f.seq, f.category, f.name, f.title, f.round]));
+  const ok = hashOk && strip(re.flat) === strip(r.result || []);
+  out.innerHTML = ok ? '<b style="color:#0b7a43">✅ 일치</b>' : '<b style="color:#b42318">❌ 불일치</b>';
+});
+
+$('#loadTeams').onclick = async () => {
+  if (!fb) return toast('Firebase가 설정되지 않았습니다', 'err');
+  const { getDocs, collection } = fb.F;
+  const s = await getDocs(collection(fb.db, 'teams'));
+  if (s.empty) return toast('등록된 명단이 없습니다');
+  const teams = s.docs.map(d => d.data()).sort((a, b) => a.seq - b.seq);
+  for (const c of CATEGORIES) $(`#in-${c.id}`).value = teams.filter(t => t.category === c.id).map(t => `${t.name} | ${t.title} | ${t.round}`).join('\n');
+  updateInfo(); toast(`${teams.length}팀을 불러왔습니다`);
+};
+
+$('#saveBtn').onclick = async () => {
+  if (!current) return;
+  if (!fb) return;
+  if (!user || !isAdmin) return toast('관리자 계정으로 로그인해야 반영할 수 있습니다', 'err');
+  const { collection, getDocs, query, limit, writeBatch, doc, serverTimestamp, setDoc } = fb.F;
+  try {
+    const sc = await getDocs(query(collection(fb.db, 'scores'), limit(1)));
+    if (!sc.empty) return toast('이미 심사 점수가 있어 순서를 바꿀 수 없습니다. (운영 화면에서 리허설 데이터 초기화 후 가능)', 'err');
+    if (!confirm(`총 ${current.flat.length}팀의 발표 순서를 확정하고 심사 시스템에 반영합니다.\n기존 참가팀 목록은 교체됩니다. 진행할까요?`)) return;
+    const old = await getDocs(collection(fb.db, 'teams'));
+    const b = writeBatch(fb.db);
+    old.docs.forEach(d => b.delete(d.ref));
+    current.flat.forEach(f => b.set(doc(fb.db, 'teams', 't' + String(f.seq).padStart(2, '0')), { seq: f.seq, catSeq: f.catSeq, category: f.category, name: f.name, title: f.title, round: Number(f.round) }));
+    b.set(doc(collection(fb.db, 'draws')), { seed: current.seed, inputHash: current.inputHash, canonical: current.canonical, catOrder: current.catOrder, result: current.flat, by: lc(user.email), createdAt: serverTimestamp() });
+    await b.commit();
+    await setDoc(doc(fb.db, 'state', 'live'), { currentTeamId: null, voteOpen: false, closedTeams: [], updatedAt: serverTimestamp() }, { merge: true });
+    toast('발표 순서를 확정하고 심사 시스템에 반영했습니다');
+  } catch (e) { toast('반영 실패: ' + e.message, 'err'); }
+};
+updateInfo();
+</script>
+</body>
+</html>
