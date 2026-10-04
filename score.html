@@ -47,6 +47,16 @@ th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertic
 th{font-size:12px;color:var(--muted);font-weight:700;white-space:nowrap}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 tr.cur{background:#f0f9f3}
+.mv{display:flex;gap:3px;margin-top:4px}
+.mv button{border:1px solid var(--line);background:#fff;border-radius:6px;font-size:11px;padding:2px 6px;cursor:pointer;line-height:1.3}
+.mv button:hover{border-color:var(--pri);color:var(--pri)}
+.moved{display:block;font-size:11px;color:#1d4ed8;font-weight:700;white-space:nowrap}
+.pin{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#e0ecff;color:#1d4ed8}
+.addrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.addrow input{flex:1 1 200px;width:auto;min-width:0}
+.nm-in{padding:5px 8px!important;max-width:140px}
+.badge.no{background:#fde8e6;color:#b42318}
+details.bulk{margin-top:12px}details.bulk summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--pri)}
 .tbl{overflow-x:auto}
 label.f{display:block;font-size:13px;font-weight:700;margin:12px 0 4px}
 input[type=text],input[type=number],input[type=email],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#fff}
@@ -136,7 +146,7 @@ const f2 = x => (x == null || isNaN(x)) ? '-' : r2(x).toFixed(2);
 const catName = id => CATEGORIES.find(c => c.id === id)?.name || id;
 const fmtTime = ts => { const d = ts?.toDate?.(); return d ? d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '-'; };
 const lc = s => String(s||'').trim().toLowerCase();
-function toast(msg, type=''){ const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 2600); }
+function toast(msg, type=''){ document.querySelectorAll('.toast').forEach(x => x.remove()); const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 2600); }
 
 const view = new URLSearchParams(location.search).get('view') || 'home';
 const appEl = $('#app');
@@ -225,6 +235,7 @@ function renderHome(){
     <a href="?view=vote"><b>📱 관람객 투표</b><span class="muted">QR로 접속하는 현장 투표</span></a>
     <a href="?view=board"><b>🏆 실시간 순위 전광판</b><span class="muted">대형 화면용 (운영자 로그인)</span></a>
     <a href="order.html"><b>🎲 발표 순서 추첨</b><span class="muted">부문별 발표 순서 결정</span></a>
+    <a href="?view=users"><b>👥 계정 관리</b><span class="muted">운영 관리자·심사위원 추가와 로그인 확인</span></a>
   </div></div>`;
 }
 
@@ -300,18 +311,21 @@ function renderLinks(){
   $('#a-links').innerHTML = `<h2>🔗 화면 바로가기</h2>
   <div class="row"><a class="btn soft" href="?view=judge" target="_blank" style="text-decoration:none">📝 심사위원 화면</a>
   <a class="btn soft" href="?view=board" target="_blank" style="text-decoration:none">🏆 전광판</a>
-  <a class="btn soft" href="order.html" target="_blank" style="text-decoration:none">🎲 순서 추첨</a></div>
+  <a class="btn soft" href="order.html" target="_blank" style="text-decoration:none">🎲 순서 추첨</a>
+  <a class="btn soft" href="?view=users" style="text-decoration:none">👥 계정 관리</a></div>
   <p class="muted">심사위원 주소: <span style="word-break:break-all">${esc(location.origin + location.pathname + '?view=judge')}</span></p>`;
 }
 
 function renderTeams(){
   const el = $('#a-teams'); if (!el) return;
   const res = computeResults(); const N = judges().length;
-  el.innerHTML = `<h2>📋 발표 순서 · 진행 현황 <span class="muted">${S.teams.length}팀</span></h2>
+  el.innerHTML = `<h2>📋 발표 순서 · 진행 현황 <span class="muted">${S.teams.length}팀 · ▲▼로 순서 조정, ⤓는 같은 부문의 맨 뒤로</span></h2>
   <div class="tbl"><table><thead><tr><th>순서</th><th>부문</th><th>팀 / 작품</th><th>접수</th><th class="num">심사</th><th class="num">투표</th><th class="num">최종</th><th class="num">순위</th><th></th></tr></thead><tbody>
   ${res.map(r => `<tr class="${r.id===S.live.currentTeamId?'cur':''}">
-    <td>${r.seq}</td><td><span class="badge">${esc(catName(r.category))}</span></td>
-    <td><b>${esc(r.name)}</b><div class="muted">${esc(r.title)}</div></td>
+    <td><b>${r.seq}</b>${r.origSeq && r.origSeq !== r.seq ? `<span class="moved">추첨 ${r.origSeq}번</span>` : ''}
+      <div class="mv"><button data-act="moveSeq" data-id="${r.id}" data-dir="-1" title="한 칸 앞으로">▲</button><button data-act="moveSeq" data-id="${r.id}" data-dir="1" title="한 칸 뒤로">▼</button><button data-act="moveCatEnd" data-id="${r.id}" title="같은 부문의 맨 뒤로">⤓</button></div></td>
+    <td><span class="badge">${esc(catName(r.category))}</span></td>
+    <td><b>${esc(r.name)}</b> ${r.fixed === 'last' ? '<span class="pin">📌 마지막 지정</span>' : (typeof r.fixed === 'number' ? `<span class="pin">📌 ${r.fixed}번 지정</span>` : '')}<div class="muted">${esc(r.title)}</div></td>
     <td>${Number(r.round)===1?'<span class="badge r1">1차</span>':'2차'}</td>
     <td class="num">${r.judgeCount}/${N}</td><td class="num">${r.voteCount}</td>
     <td class="num"><b>${r.scored?f2(r.final):'-'}</b></td><td class="num">${r.rank??'-'}</td>
@@ -343,7 +357,7 @@ function renderResults(){
 
 function renderSettings(){
   const el = $('#a-settings'); if (!el) return;
-  const p = P(); const a = S.access;
+  const p = P();
   const critTxt = cat => (p.criteria[cat]||[]).map(c => `${c.name}, ${c.max}`).join('\n');
   el.innerHTML = `<h2>⚙️ 설정</h2>
   <div class="grid2">
@@ -355,8 +369,7 @@ function renderSettings(){
         <div><label class="f">1차 접수 인센티브(총점의 %)</label><input type="number" id="s-inc" value="${p.incentiveRate}" min="0" step="0.1"></div>
         <div><label class="f">관람객 투표 척도</label><select id="s-vs"><option value="5" ${p.voteScale==5?'selected':''}>1~5점</option><option value="10" ${p.voteScale==10?'selected':''}>1~10점</option></select></div>
       </div>
-      <label class="f">관리자 이메일 (한 줄에 하나)</label><textarea id="s-admins">${esc((a.adminEmails||[]).join('\n'))}</textarea>
-      <label class="f">심사위원 (한 줄에 <code>이메일, 이름</code>)</label><textarea id="s-judges" placeholder="judge1@gmail.com, 홍길동">${esc(judges().map(j=>`${j.email}, ${j.name}`).join('\n'))}</textarea>
+      <div class="notice" style="margin-top:14px">운영 관리자와 심사위원은 <a href="?view=users"><b>👥 계정 관리</b></a> 화면에서 추가하고 삭제합니다. 현재 심사위원 ${judges().length}명.</div>
     </div>
     <div>
       ${CATEGORIES.map(c => `<label class="f">${esc(c.name)} 심사 항목 (한 줄에 <code>항목명, 배점</code> · 합계 100)</label><textarea id="s-crit-${c.id}">${esc(critTxt(c.id))}</textarea>`).join('')}
@@ -375,11 +388,11 @@ function renderDanger(){
 
 function exportCSV(){
   const p = P(); const res = computeResults(); const js = judges();
-  const head = ['부문','순위','발표순서','팀명','작품명','접수차수', ...js.map(j => `심사:${j.name}`), '심사평균', `심사환산(${p.judgeWeight}%)`, '관람객투표수', '관람객평균(100점환산)', `관람객환산(${p.audienceWeight}%)`, '합계', `1차인센티브(${p.incentiveRate}%)`, '최종점수'];
+  const head = ['부문','순위','발표순서','추첨순서','팀명','작품명','접수차수', ...js.map(j => `심사:${j.name}`), '심사평균', `심사환산(${p.judgeWeight}%)`, '관람객투표수', '관람객평균(100점환산)', `관람객환산(${p.audienceWeight}%)`, '합계', `1차인센티브(${p.incentiveRate}%)`, '최종점수'];
   const lines = [head];
   for (const c of CATEGORIES) {
     res.filter(r => r.category === c.id).sort((a,b) => (a.rank??999)-(b.rank??999) || a.seq-b.seq).forEach(r => {
-      lines.push([c.name, r.rank??'', r.seq, r.name, r.title, Number(r.round)===1?'1차':'2차',
+      lines.push([c.name, r.rank??'', r.seq, r.origSeq ?? r.seq, r.name, r.title, Number(r.round)===1?'1차':'2차',
         ...js.map(j => { const s = S.scores.find(x => x.teamId===r.id && lc(x.email)===lc(j.email)); return s ? f2(s.total) : ''; }),
         f2(r.judgeAvg), r.scored?f2(r.judgePart):'', r.voteCount, f2(r.audAvg), r.scored?f2(r.audPart):'', r.scored?f2(r.base):'', r.scored?f2(r.bonus):'', r.scored?f2(r.final):'']);
     });
@@ -515,6 +528,109 @@ function renderBoard(){
   }).join('')}</div>`;
 }
 
+
+/* ================================================================
+   계정 관리 (운영 관리자 · 심사위원 · 로그인 기록)
+================================================================ */
+const isSuper = () => SUPER_ADMINS.map(lc).includes(lc(S.user?.email));
+const U = { logins: [], sig: {}, bulkOpen: false };
+const changed = (key, data) => { const k = JSON.stringify(data); if (U.sig[key] === k) return false; U.sig[key] = k; return true; }; // 투표 등 무관한 변경에는 다시 그리지 않음
+const fmtDT = ts => { const d = ts?.toDate?.(); return d ? d.toLocaleString('ko-KR', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '-'; };
+const loginOf = e => U.logins.find(x => lc(x.email) === lc(e));
+const seenCell = e => { const l = loginOf(e); return l ? fmtDT(l.lastSeen) : '<span class="muted">아직 없음</span>'; };
+const roleOf = e => { e = lc(e); if (SUPER_ADMINS.map(lc).includes(e)) return ['최고 관리자','on'];
+  const ad = (S.access.adminEmails||[]).map(lc).includes(e), jd = (S.access.judgeEmails||[]).map(lc).includes(e);
+  return ad && jd ? ['관리자·심사위원',''] : ad ? ['운영 관리자',''] : jd ? ['심사위원',''] : ['미등록','no']; };
+const VIEW_NAME = { admin:'운영 관리', judge:'심사위원 채점', board:'전광판', users:'계정 관리' };
+const isEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+
+window.__bulkOpen = v => { U.bulkOpen = v; };
+function startUsers(){
+  U.sig = {};
+  appEl.innerHTML = header('계정 관리') + `<main class="wrap narrow">
+    <div class="row"><a class="btn ghost sm" href="?view=admin" style="text-decoration:none">← 운영 관리로</a></div>
+    <section class="card" id="u-judges"></section>
+    <section class="card" id="u-logins"></section>
+    <section class="card" id="u-admins"></section></main>`;
+  subCommon(); subAdminData();
+  onSnapshot(collection(db,'logins'), s => { U.logins = s.docs.map(d => d.data()).sort((a,b) => (b.lastSeen?.toMillis?.() || 0) - (a.lastSeen?.toMillis?.() || 0)); refresh(); });
+  refresh = () => { renderUJudges(); renderULogins(); renderUAdmins(); };
+}
+function keepInputs(ids, fn){ // 다시 그릴 때 입력 중인 값 보존
+  const v = {}; ids.forEach(id => { const el = $('#' + id); if (el) v[id] = el.value; });
+  const focused = document.activeElement?.id; fn();
+  ids.forEach(id => { const el = $('#' + id); if (el && v[id] != null) el.value = v[id]; });
+  if (focused && $('#' + focused)) $('#' + focused).focus();
+}
+function renderUJudges(){
+  const el = $('#u-judges'); if (!el) return;
+  if (document.activeElement?.dataset?.jname != null) return; // 이름 수정 중에는 다시 그리지 않음
+  if (!changed('j', [judges(), S.teams.length, S.scores.map(x => x.email).sort(), judges().map(j => loginOf(j.email)?.lastSeen?.toMillis?.() || 0)])) return;
+  keepInputs(['u-j-email','u-j-name','u-bulk'], () => {
+    const js = judges();
+    el.innerHTML = `<h2>📝 심사위원 <span class="muted">${js.length}명</span></h2>
+    <p class="muted" style="margin-top:-6px">여기 등록된 구글 계정만 채점 화면에 들어갈 수 있습니다. 이메일은 심사위원이 로그인하는 구글 계정과 정확히 같아야 합니다.</p>
+    <div class="tbl"><table><thead><tr><th>이름</th><th>구글 이메일</th><th>최근 접속</th><th class="num">제출</th><th></th></tr></thead><tbody>
+    ${js.length ? js.map(j => { const n = S.scores.filter(s => lc(s.email) === lc(j.email)).length;
+      return `<tr><td><input type="text" class="nm-in" data-jname="${esc(j.email)}" value="${esc(j.name)}" aria-label="심사위원 이름"></td><td>${esc(j.email)}</td><td>${seenCell(j.email)}</td>
+      <td class="num">${n}/${S.teams.length}</td><td class="num"><button class="btn sm ghost" data-act="uDelJudge" data-email="${esc(j.email)}">삭제</button></td></tr>`; }).join('')
+      : '<tr><td colspan="5" class="muted">등록된 심사위원이 없습니다. 아래에서 추가하세요.</td></tr>'}
+    </tbody></table></div>
+    <div class="addrow"><input type="text" id="u-j-name" placeholder="이름" style="flex:0 1 140px"><input type="email" id="u-j-email" placeholder="구글 이메일 (예: judge1@gmail.com)"><button class="btn" data-act="uAddJudge">심사위원 추가</button></div>
+    <details class="bulk" ${U.bulkOpen ? 'open' : ''} ontoggle="window.__bulkOpen && window.__bulkOpen(this.open)"><summary>여러 명 한 번에 추가</summary>
+      <p class="muted">한 줄에 <code>이메일, 이름</code>. 엑셀에서 두 열을 복사해 붙여 넣어도 됩니다.</p>
+      <textarea id="u-bulk" placeholder="judge1@gmail.com, 홍길동&#10;judge2@gmail.com, 김영희"></textarea>
+      <div style="margin-top:8px"><button class="btn soft" data-act="uBulk">한꺼번에 추가</button></div></details>`;
+  });
+}
+function renderULogins(){
+  const el = $('#u-logins'); if (!el) return; const sup = isSuper();
+  const list = U.logins.slice(0, 30);
+  if (!changed('l', [list.map(l => [l.email, l.name, l.view, l.lastSeen?.toMillis?.() || 0]), S.access, sup])) return;
+  el.innerHTML = `<h2>🔑 로그인 기록</h2>
+  <p class="muted" style="margin-top:-6px">누가 어떤 구글 계정으로 로그인했는지 남습니다. 심사위원에게 채점 화면 주소로 한 번 로그인해 달라고 한 뒤, 여기서 <b>미등록</b>으로 뜨는 계정을 바로 등록하면 이메일을 잘못 입력할 일이 없습니다.</p>
+  <div class="tbl"><table><thead><tr><th>구글 이름</th><th>이메일</th><th>접속 화면</th><th>시각</th><th>상태</th><th></th></tr></thead><tbody>
+  ${list.length ? list.map(l => { const [rn, rc] = roleOf(l.email);
+    return `<tr><td>${esc(l.name || '-')}</td><td>${esc(l.email)}</td><td>${esc(VIEW_NAME[l.view] || l.view || '-')}</td><td>${fmtDT(l.lastSeen)}</td>
+    <td><span class="badge ${rc}">${rn}</span></td>
+    <td class="num">${rn === '미등록' ? `<div class="row" style="justify-content:flex-end;gap:4px"><button class="btn sm" data-act="uLoginJudge" data-email="${esc(l.email)}">심사위원으로 등록</button>${sup ? `<button class="btn sm soft" data-act="uLoginAdmin" data-email="${esc(l.email)}">관리자로 등록</button>` : ''}</div>` : ''}</td></tr>`; }).join('')
+    : '<tr><td colspan="6" class="muted">아직 로그인 기록이 없습니다.</td></tr>'}
+  </tbody></table></div>`;
+}
+function renderUAdmins(){
+  const el = $('#u-admins'); if (!el) return; const sup = isSuper();
+  keepInputs(['u-a-email'], () => {
+    const supers = SUPER_ADMINS.map(lc); const extra = (S.access.adminEmails || []).map(lc).filter(e => !supers.includes(e));
+    if (!changed('a', [supers, extra, sup, [...supers, ...extra].map(e => loginOf(e)?.lastSeen?.toMillis?.() || 0)])) return;
+    const row = (e, tag, act) => `<tr><td>${esc(e)}</td><td>${tag}</td><td>${seenCell(e)}</td><td class="num">${act}</td></tr>`;
+    el.innerHTML = `<h2>🛠 운영 관리자 <span class="muted">${supers.length + extra.length}명</span></h2>
+    <p class="muted" style="margin-top:-6px">운영 관리 화면, 전광판, 계정 관리, 발표 순서 확정을 쓸 수 있습니다. 운영 관리자는 심사위원을 관리할 수 있지만, 운영 관리자 추가·삭제는 최고 관리자만 할 수 있습니다.</p>
+    <div class="tbl"><table><thead><tr><th>구글 이메일</th><th>구분</th><th>최근 접속</th><th></th></tr></thead><tbody>
+    ${supers.map(e => row(e, '<span class="badge on">최고 관리자</span>', '')).join('')}
+    ${extra.map(e => row(e, '<span class="badge">운영 관리자</span>', sup ? `<button class="btn sm ghost" data-act="uDelAdmin" data-email="${esc(e)}">삭제</button>` : '')).join('')}
+    </tbody></table></div>
+    ${sup ? `<div class="addrow"><input type="email" id="u-a-email" placeholder="추가할 구글 이메일"><button class="btn" data-act="uAddAdmin">운영 관리자 추가</button></div>`
+          : `<div class="notice" style="margin-top:12px">운영 관리자를 추가하려면 최고 관리자(${esc(supers.join(', '))})에게 요청하세요.</div>`}
+    <p class="muted">최고 관리자는 config.js와 보안 규칙에 적힌 계정이라 이 화면에서 바꿀 수 없습니다.</p>`;
+  });
+}
+async function saveAccess(patch){
+  const a = { adminEmails: S.access.adminEmails || [], judges: S.access.judges || [], ...patch };
+  a.judgeEmails = a.judges.map(j => lc(j.email));
+  try { await setDoc(doc(db,'config','access'), a); return true; }
+  catch(e) { toast('저장하지 못했습니다: ' + e.message, 'err'); return false; }
+}
+async function addJudges(list){
+  const map = new Map(judges().map(j => [lc(j.email), { ...j }])); let added = 0, updated = 0;
+  for (const j of list) { const e = lc(j.email); if (map.has(e)) { if (j.name) { map.get(e).name = j.name; updated++; } } else { map.set(e, { email: e, name: j.name || e.split('@')[0] }); added++; } }
+  if (await saveAccess({ judges: [...map.values()] })) toast(`심사위원 ${added}명 추가` + (updated ? `, ${updated}명 이름 갱신` : ''));
+}
+document.addEventListener('change', async e => {
+  const em = e.target.dataset?.jname; if (em == null) return;
+  const name = e.target.value.trim(); if (!name) { e.target.value = judges().find(j => j.email === em)?.name || ''; return toast('이름을 비울 수 없습니다', 'err'); }
+  if (await saveAccess({ judges: judges().map(j => j.email === em ? { ...j, name } : j) })) toast('이름을 바꿨습니다');
+  e.target.blur();
+});
 /* ================================================================
    액션
 ================================================================ */
@@ -525,12 +641,25 @@ const ACT = {
     const me = lc(S.user.email);
     if (!S.pubExists) await setDoc(doc(db,'config','public'), { ...DEFAULT_PUB, updatedAt: serverTimestamp() });
     const a = await getDoc(doc(db,'config','access'));
-    if (!a.exists()) await setDoc(doc(db,'config','access'), { adminEmails:[me], judgeEmails:[], judges:[] });
+    if (!a.exists()) await setDoc(doc(db,'config','access'), { adminEmails:[], judgeEmails:[], judges:[] });
     if (!S.liveExists) await updateLive({ currentTeamId:null, voteOpen:false, closedTeams:[], showScores:true });
     toast('기본 설정을 생성했습니다');
   },
   async setCurrent(d){ await updateLive({ currentTeamId: d.id, voteOpen: false }); },
   async prev(){ moveTeam(-1); }, async next(){ moveTeam(1); },
+  async moveSeq(d){
+    const ids = S.teams.map(t => t.id); const i = ids.indexOf(d.id); const j = i + Number(d.dir);
+    if (i < 0 || j < 0 || j >= ids.length) return toast(Number(d.dir) < 0 ? '이미 첫 순서입니다' : '이미 마지막 순서입니다');
+    [ids[i], ids[j]] = [ids[j], ids[i]]; await applyOrder(ids);
+  },
+  async moveCatEnd(d){
+    const t = teamById(d.id); const ids = S.teams.map(x => x.id).filter(id => id !== d.id);
+    let last = -1; ids.forEach((id, k) => { if (teamById(id).category === t.category) last = k; });
+    if (last < 0) last = ids.length - 1;
+    ids.splice(last + 1, 0, d.id);
+    if (ids.join() === S.teams.map(x => x.id).join()) return toast('이미 부문의 마지막 순서입니다');
+    await applyOrder(ids); toast(`${t.name} → ${catName(t.category)} 맨 뒤로 옮겼습니다`);
+  },
   async toggleVote(){ await updateLive({ voteOpen: !S.live.voteOpen }); },
   async toggleClose(d){ await updateLive({ closedTeams: isClosed(d.id) ? arrayRemove(d.id) : arrayUnion(d.id) }); },
   async toggleShow(){ await updateLive({ showScores: S.live.showScores === false }); },
@@ -548,13 +677,8 @@ const ACT = {
       if (sum !== 100) return toast(`${c.name} 배점 합계가 ${sum}점입니다. 100점으로 맞춰 주세요`, 'err');
       criteria[c.id] = list;
     }
-    const judgesList = $('#s-judges').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [email, ...n] = l.split(','); return { email: lc(email), name: n.join(',').trim() || lc(email) }; });
-    if (judgesList.some(j => !j.email.includes('@'))) return toast('심사위원 이메일 형식을 확인하세요', 'err');
-    const admins = $('#s-admins').value.split('\n').map(lc).filter(Boolean);
-    if (!admins.length && !SUPER_ADMINS.length) return toast('관리자를 한 명 이상 등록하세요', 'err');
     await setDoc(doc(db,'config','public'), { title: $('#s-title').value.trim() || DEFAULT_PUB.title, judgeWeight: wj, audienceWeight: wa,
       incentiveRate: Number($('#s-inc').value) || 0, voteScale: Number($('#s-vs').value), criteria, updatedAt: serverTimestamp() });
-    await setDoc(doc(db,'config','access'), { adminEmails: admins, judgeEmails: judgesList.map(j => j.email), judges: judgesList });
     settingsDirty = false; toast('설정을 저장했습니다'); renderSettings();
   },
   async resetData(){
@@ -582,6 +706,34 @@ const ACT = {
       J.dirty = false; toast('제출되었습니다');
     } catch(e) { toast(isClosed(t.id) ? '채점이 마감되어 제출할 수 없습니다' : '제출 실패: ' + e.message, 'err'); }
   },
+  async uAddJudge(){
+    const email = lc($('#u-j-email').value), name = $('#u-j-name').value.trim();
+    if (!isEmail(email)) return toast('이메일 형식을 확인하세요', 'err');
+    if (!name) return toast('이름을 입력하세요', 'err');
+    await addJudges([{ email, name }]); $('#u-j-email').value = ''; $('#u-j-name').value = '';
+  },
+  async uBulk(){
+    const rows = $('#u-bulk').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const p = l.split(/\t|,/).map(x => x.trim()); const ei = p.findIndex(isEmail); return ei < 0 ? null : { email: p[ei], name: p.filter((_, k) => k !== ei).join(' ').trim() }; });
+    const bad = rows.filter(r => !r).length, ok = rows.filter(Boolean);
+    if (!ok.length) return toast('이메일이 들어 있는 줄이 없습니다', 'err');
+    await addJudges(ok); $('#u-bulk').value = ''; if (bad) toast(`이메일을 찾지 못한 ${bad}줄은 건너뛰었습니다`, 'err');
+  },
+  async uDelJudge(d){
+    const j = judges().find(x => x.email === d.email); const n = S.scores.filter(s => lc(s.email) === d.email).length;
+    if (!confirm(`${j?.name || d.email} 심사위원을 삭제할까요?` + (n ? `\n이미 제출한 점수 ${n}건은 지워지지 않고 집계에 그대로 포함됩니다.` : ''))) return;
+    if (await saveAccess({ judges: judges().filter(x => x.email !== d.email) })) toast('삭제했습니다');
+  },
+  async uLoginJudge(d){ const l = loginOf(d.email); await addJudges([{ email: d.email, name: l?.name || '' }]); },
+  async uLoginAdmin(d){ if (await saveAccess({ adminEmails: [...new Set([...(S.access.adminEmails || []).map(lc), lc(d.email)])] })) toast('운영 관리자로 등록했습니다'); },
+  async uAddAdmin(){
+    const email = lc($('#u-a-email').value); if (!isEmail(email)) return toast('이메일 형식을 확인하세요', 'err');
+    if ((S.access.adminEmails || []).map(lc).includes(email) || SUPER_ADMINS.map(lc).includes(email)) return toast('이미 관리자입니다');
+    if (await saveAccess({ adminEmails: [...(S.access.adminEmails || []), email] })) { toast('운영 관리자를 추가했습니다'); $('#u-a-email').value = ''; }
+  },
+  async uDelAdmin(d){
+    if (!confirm(`${d.email} 계정의 운영 관리자 권한을 삭제할까요?`)) return;
+    if (await saveAccess({ adminEmails: (S.access.adminEmails || []).filter(x => lc(x) !== d.email) })) toast('삭제했습니다');
+  },
   vPick(d){ V.pick = Number(d.n); renderVote(); },
   async vSubmit(){
     const t = teamById(S.live.currentTeamId); if (!t || !V.pick) return;
@@ -591,6 +743,12 @@ const ACT = {
     } catch(e) { toast('투표가 마감되었거나 오류가 발생했습니다', 'err'); }
   }
 };
+async function applyOrder(ids){
+  const b = writeBatch(db); let n = 0;
+  ids.forEach((id, k) => { const t = teamById(id); const seq = k + 1;
+    if (t.seq !== seq) { b.set(doc(db,'teams',id), { seq, origSeq: t.origSeq ?? t.seq }, { merge:true }); n++; } });
+  if (n) await b.commit();
+}
 function moveTeam(dir){
   if (!S.teams.length) return;
   const i = S.teams.findIndex(t => t.id === S.live.currentTeamId);
@@ -610,8 +768,10 @@ onAuthStateChanged(auth, async user => {
   if (view === 'vote') { if (!user) { try { await signInAnonymously(auth); } catch(e){ appEl.innerHTML = '<div class="center">접속 오류: 익명 로그인이 비활성화되어 있습니다.</div>'; } return; } startVote(); return; }
   if (!user || user.isAnonymous) return renderLogin();
   try { const a = await getDoc(doc(db,'config','access')); if (a.exists()) S.access = a.data(); } catch(e) {}
+  // 로그인 기록: 권한이 없어도 남겨서, 운영자가 계정 관리 화면에서 정확한 이메일을 확인하고 바로 등록할 수 있게 함
+  setDoc(doc(db,'logins',lc(user.email)), { email: lc(user.email), name: user.displayName || '', view, lastSeen: serverTimestamp() }, { merge:true }).catch(() => {});
   if (view === 'judge') { if (!isJudgeEmail()) return renderDenied('심사위원으로 등록된 계정이 아닙니다. 운영자에게 문의하세요.'); startJudge(); }
-  else if (view === 'admin' || view === 'board') { if (!isAdminEmail()) return renderDenied('관리자 계정이 아닙니다.'); view === 'admin' ? startAdmin() : startBoard(); }
+  else if (view === 'admin' || view === 'board' || view === 'users') { if (!isAdminEmail()) return renderDenied('관리자 계정이 아닙니다.'); view === 'admin' ? startAdmin() : view === 'board' ? startBoard() : startUsers(); }
   else renderHome();
 });
 </script>

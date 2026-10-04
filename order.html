@@ -59,6 +59,9 @@ th{font-size:12px;color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#15201a;color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;z-index:99}
 .toast.err{background:var(--danger)}
 #printArea{display:none}
+.pin{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:#e0ecff;color:#1d4ed8}
+.slot .pin{background:#21456b;color:#cfe3ff}
+.filebtn{position:relative;overflow:hidden}.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
 @media print{
   body{background:#fff}
   .top,.wrap>*:not(#resultCard),#resultCard .noprint{display:none!important}
@@ -75,7 +78,13 @@ th{font-size:12px;color:var(--muted)}
 
   <section class="card">
     <h2><span class="step">1</span> 참가 명단 입력</h2>
-    <p class="muted" style="margin-top:-4px">한 줄에 한 팀: <code>팀명(이름) | 작품명 | 접수차수</code> — 엑셀에서 3개 열을 복사해 붙여 넣어도 됩니다(탭 구분). 접수차수는 <code>1</code> 또는 <code>2</code>(1차/2차).</p>
+    <div class="row" style="margin:-4px 0 10px">
+      <a class="btn soft sm" href="participants_template.xlsx" download="AI공모전_참가명단_양식.xlsx" style="text-decoration:none">📥 엑셀 양식 내려받기</a>
+      <label class="btn sm filebtn">📂 엑셀 파일 불러오기<input type="file" id="xlsxFile" accept=".xlsx,.xls,.csv"></label>
+      <span class="muted">양식에 명단을 채워 불러오면 아래 칸이 자동으로 채워집니다.</span>
+    </div>
+    <p class="muted" style="margin:0">직접 입력할 때는 한 줄에 한 팀: <code>팀명 | 작품명 | 접수차수 | 지정 순서</code>. 접수차수는 <code>1</code> 또는 <code>2</code>.
+    지정 순서는 보통 비워 두고, 사정이 있는 팀만 숫자(부문 안 순서) 또는 <code>마지막</code>을 씁니다. 지정된 팀을 뺀 나머지가 빈 자리에 추첨됩니다.</p>
     <div class="cols" id="inputs"></div>
     <div class="row" style="margin-top:10px"><button class="btn soft sm" id="loadTeams">심사 시스템에 등록된 명단 불러오기</button><span class="muted" id="parseInfo"></span></div>
   </section>
@@ -138,7 +147,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const catName = id => CATEGORIES.find(c => c.id === id)?.name || id;
 const lc = s => String(s||'').trim().toLowerCase();
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-function toast(msg, type=''){ const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 2800); }
+function toast(msg, type=''){ document.querySelectorAll('.toast').forEach(x => x.remove()); const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), 2800); }
 
 /* ---------------- 결정적 추첨 알고리즘 ----------------
    rnd(seed,label,i) = SHA-256("seed|label|i") 앞 48비트 / 2^48
@@ -149,16 +158,27 @@ async function rnd(seed, label, i){ const h = await sha256hex(`${seed}|${label}|
 async function shuffle(arr, seed, label){ const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(await rnd(seed, label, i) * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 const cmp = (a, b) => { const x = JSON.stringify(a), y = JSON.stringify(b); return x < y ? -1 : x > y ? 1 : 0; };
 
+// 지정 순서: 숫자 → 그 자리에 고정, '마지막' → 부문 맨 뒤(여러 팀이면 그들끼리 추첨), 나머지 → 빈 자리에 추첨
+async function arrangeCat(list, seed, cat){
+  const n = list.length, slots = Array(n).fill(null);
+  list.filter(e => typeof e[3] === 'number').forEach(e => { slots[e[3] - 1] = e; });
+  const lasts = await shuffle(list.filter(e => e[3] === 'last'), seed, cat + '|LAST');
+  for (const e of lasts.slice().reverse()) { let k = n - 1; while (slots[k]) k--; slots[k] = e; }
+  const rest = await shuffle(list.filter(e => e[3] !== 'last' && typeof e[3] !== 'number'), seed, cat);
+  let r = 0; for (let i = 0; i < n; i++) if (!slots[i]) slots[i] = rest[r++];
+  return slots;
+}
 async function computeDraw(canonical, seed){
   const c = JSON.parse(canonical);
   const catOrder = c.catMode === 'random' ? await shuffle(c.catOrder, seed, 'CATEGORY') : c.catOrder;
   const flat = []; let seq = 0;
   for (const cat of catOrder) {
-    const list = await shuffle(c.cats[cat] || [], seed, cat);
-    list.forEach((e, k) => flat.push({ seq: ++seq, catSeq: k + 1, category: cat, name: e[0], title: e[1], round: e[2] }));
+    const list = await arrangeCat(c.cats[cat] || [], seed, cat);
+    list.forEach((e, k) => flat.push({ seq: ++seq, catSeq: k + 1, category: cat, name: e[0], title: e[1], round: e[2], fixed: e[3] ?? '' }));
   }
   return { catOrder, flat };
 }
+const fixLabel = f => f === 'last' ? '마지막 지정' : (typeof f === 'number' ? `${f}번 지정` : '');
 
 /* ---------------- 입력 ---------------- */
 $('#inputs').innerHTML = CATEGORIES.map(c => `<div><label class="f">${esc(c.name)} <span class="muted" id="cnt-${c.id}">0팀</span></label>
@@ -166,7 +186,10 @@ $('#inputs').innerHTML = CATEGORIES.map(c => `<div><label class="f">${esc(c.name
 function parseCat(id){
   return $(`#in-${id}`).value.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
     const p = l.split(/\t|\|/).map(s => s.trim());
-    const r = (p[2] || '').match(/[12]/); return { name: p[0], title: p[1] || '', round: r ? Number(r[0]) : 2, roundMissing: !r };
+    const r = (p[2] || '').match(/[12]/);
+    const fx = (p[3] || '').replace(/번|위/g, '').trim();
+    const fixed = /^(끝|마지막|맨뒤|맨 뒤|last)$/i.test(fx) ? 'last' : (/^\d+$/.test(fx) ? Number(fx) : '');
+    return { name: p[0], title: p[1] || '', round: r ? Number(r[0]) : 2, roundMissing: !r, fixed, fixBad: !!fx && fixed === '' };
   }).filter(e => e.name);
 }
 function renderFixed(){
@@ -177,13 +200,14 @@ renderFixed(); $('#catMode').onchange = () => { renderFixed(); updateInfo(); };
 function canonical(){
   const mode = $('#catMode').value;
   const order = mode === 'fixed' ? [...document.querySelectorAll('[data-fo]')].map(s => s.value) : CATEGORIES.map(c => c.id);
-  const cats = {}; for (const c of CATEGORIES) cats[c.id] = parseCat(c.id).map(e => [e.name, e.title, e.round]).sort(cmp);
-  return JSON.stringify({ v: 1, catMode: mode, catOrder: order, cats });
+  const cats = {}; for (const c of CATEGORIES) cats[c.id] = parseCat(c.id).map(e => [e.name, e.title, e.round, e.fixed]).sort(cmp);
+  return JSON.stringify({ v: 2, catMode: mode, catOrder: order, cats });
 }
 async function updateInfo(){
-  let total = 0, miss = 0;
-  for (const c of CATEGORIES) { const l = parseCat(c.id); total += l.length; miss += l.filter(e => e.roundMissing).length; $(`#cnt-${c.id}`).textContent = `${l.length}팀`; }
-  $('#parseInfo').innerHTML = `총 ${total}팀` + (miss ? ` · <b style="color:#b45309">접수차수 미입력 ${miss}팀 → 2차로 처리</b>` : '');
+  let total = 0, miss = 0, fixedN = 0;
+  for (const c of CATEGORIES) { const l = parseCat(c.id); total += l.length; miss += l.filter(e => e.roundMissing).length; fixedN += l.filter(e => e.fixed !== '').length;
+    const f = l.filter(e => e.fixed !== '').length; $(`#cnt-${c.id}`).textContent = `${l.length}팀` + (f ? ` · 지정 ${f}` : ''); }
+  $('#parseInfo').innerHTML = `총 ${total}팀` + (fixedN ? ` · <span class="pin">순서 지정 ${fixedN}팀</span>` : '') + (miss ? ` · <b style="color:#b45309">접수차수 미입력 ${miss}팀 → 2차로 처리</b>` : '');
   $('#inputHash').textContent = total ? await sha256hex(canonical()) : '-';
 }
 $('#inputs').addEventListener('input', updateInfo);
@@ -198,6 +222,15 @@ $('#drawBtn').onclick = async () => {
   const canon = canonical(); const c = JSON.parse(canon);
   if (c.catMode === 'fixed' && new Set(c.catOrder).size !== CATEGORIES.length) return toast('부문 진행 순서가 중복되었습니다', 'err');
   if (!Object.values(c.cats).some(l => l.length)) return toast('참가 명단을 입력하세요', 'err');
+  for (const cat of CATEGORIES) {
+    const raw = parseCat(cat.id), bad = raw.find(e => e.fixBad);
+    if (bad) return toast(`${cat.name} · ${bad.name}: 지정 순서는 숫자 또는 '마지막'만 쓸 수 있습니다`, 'err');
+    const nums = raw.filter(e => typeof e.fixed === 'number');
+    const over = nums.find(e => e.fixed < 1 || e.fixed > raw.length);
+    if (over) return toast(`${cat.name} · ${over.name}: 지정 순서 ${over.fixed}번은 범위를 벗어났습니다 (1~${raw.length})`, 'err');
+    const dup = nums.find((e, i) => nums.findIndex(x => x.fixed === e.fixed) !== i);
+    if (dup) return toast(`${cat.name}: ${dup.fixed}번 자리에 두 팀이 지정되었습니다`, 'err');
+  }
   const seed = $('#seed').value.trim(); if (!seed) return toast('시드를 입력하세요', 'err');
   $('#drawBtn').disabled = true; skip = false; $('#resultCard').style.display = 'none';
   const res = await computeDraw(canon, seed);
@@ -221,7 +254,7 @@ async function reveal(d){
         while (Date.now() - t0 < speed && !skip) { el.querySelector('.nm').textContent = remaining[Math.floor(Math.random() * remaining.length)]; await sleep(60); }
         el.classList.remove('rolling');
       }
-      el.querySelector('.nm').innerHTML = `${esc(f.name)} ${Number(f.round)===1?'<span class="badge r1">1차</span>':''}`;
+      el.querySelector('.nm').innerHTML = `${esc(f.name)} ${Number(f.round)===1?'<span class="badge r1">1차</span>':''} ${f.fixed!==''?`<span class="pin">📌 ${fixLabel(f.fixed)}</span>`:''}`;
       el.querySelector('.tt').textContent = f.title || ' ';
       el.classList.add('done'); remaining.splice(remaining.indexOf(f.name), 1);
       if (speed && !skip) await sleep(250);
@@ -231,13 +264,13 @@ async function reveal(d){
 function renderResult(d){
   $('#resultCard').style.display = '';
   $('#resultMeta').innerHTML = `추첨 시각 ${new Date().toLocaleString('ko-KR')} · 시드 <span class="mono">${esc(d.seed)}</span><br>입력 명단 지문 <span class="mono">${esc(d.inputHash)}</span>`;
-  $('#resultTable').innerHTML = `<thead><tr><th>발표 순서</th><th>부문</th><th>부문 내</th><th>팀명</th><th>작품명</th><th>접수</th></tr></thead><tbody>
-  ${d.flat.map(f => `<tr><td><b>${f.seq}</b></td><td>${esc(catName(f.category))}</td><td>${f.catSeq}</td><td>${esc(f.name)}</td><td>${esc(f.title)}</td><td>${Number(f.round)===1?'<span class="badge r1">1차</span>':'2차'}</td></tr>`).join('')}</tbody>`;
+  $('#resultTable').innerHTML = `<thead><tr><th>발표 순서</th><th>부문</th><th>부문 내</th><th>팀명</th><th>작품명</th><th>접수</th><th>비고</th></tr></thead><tbody>
+  ${d.flat.map(f => `<tr><td><b>${f.seq}</b></td><td>${esc(catName(f.category))}</td><td>${f.catSeq}</td><td>${esc(f.name)}</td><td>${esc(f.title)}</td><td>${Number(f.round)===1?'<span class="badge r1">1차</span>':'2차'}</td><td>${f.fixed!==''?`<span class="pin">📌 ${fixLabel(f.fixed)}</span>`:'추첨'}</td></tr>`).join('')}</tbody>`;
 }
 $('#printBtn').onclick = () => window.print();
 $('#csvBtn').onclick = () => {
   if (!current) return;
-  const rows = [['발표순서','부문','부문내순서','팀명','작품명','접수차수'], ...current.flat.map(f => [f.seq, catName(f.category), f.catSeq, f.name, f.title, Number(f.round)===1?'1차':'2차']), [], ['시드', current.seed], ['입력명단지문', current.inputHash]];
+  const rows = [['발표순서','부문','부문내순서','팀명','작품명','접수차수','비고'], ...current.flat.map(f => [f.seq, catName(f.category), f.catSeq, f.name, f.title, Number(f.round)===1?'1차':'2차', fixLabel(f.fixed) || '추첨']), [], ['시드', current.seed], ['입력명단지문', current.inputHash]];
   const csv = '\uFEFF' + rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = '발표순서.csv'; a.click();
 };
@@ -296,7 +329,7 @@ $('#loadTeams').onclick = async () => {
   const s = await getDocs(collection(fb.db, 'teams'));
   if (s.empty) return toast('등록된 명단이 없습니다');
   const teams = s.docs.map(d => d.data()).sort((a, b) => a.seq - b.seq);
-  for (const c of CATEGORIES) $(`#in-${c.id}`).value = teams.filter(t => t.category === c.id).map(t => `${t.name} | ${t.title} | ${t.round}`).join('\n');
+  for (const c of CATEGORIES) $(`#in-${c.id}`).value = teams.filter(t => t.category === c.id).map(t => `${t.name} | ${t.title} | ${t.round}` + (t.fixed === 'last' ? ' | 마지막' : (typeof t.fixed === 'number' ? ` | ${t.fixed}` : ''))).join('\n');
   updateInfo(); toast(`${teams.length}팀을 불러왔습니다`);
 };
 
@@ -312,13 +345,55 @@ $('#saveBtn').onclick = async () => {
     const old = await getDocs(collection(fb.db, 'teams'));
     const b = writeBatch(fb.db);
     old.docs.forEach(d => b.delete(d.ref));
-    current.flat.forEach(f => b.set(doc(fb.db, 'teams', 't' + String(f.seq).padStart(2, '0')), { seq: f.seq, catSeq: f.catSeq, category: f.category, name: f.name, title: f.title, round: Number(f.round) }));
+    current.flat.forEach(f => b.set(doc(fb.db, 'teams', 't' + String(f.seq).padStart(2, '0')), { seq: f.seq, origSeq: f.seq, catSeq: f.catSeq, category: f.category, name: f.name, title: f.title, round: Number(f.round), fixed: f.fixed }));
     b.set(doc(collection(fb.db, 'draws')), { seed: current.seed, inputHash: current.inputHash, canonical: current.canonical, catOrder: current.catOrder, result: current.flat, by: lc(user.email), createdAt: serverTimestamp() });
     await b.commit();
     await setDoc(doc(fb.db, 'state', 'live'), { currentTeamId: null, voteOpen: false, closedTeams: [], updatedAt: serverTimestamp() }, { merge: true });
     toast('발표 순서를 확정하고 심사 시스템에 반영했습니다');
   } catch (e) { toast('반영 실패: ' + e.message, 'err'); }
 };
+/* ---------------- 엑셀 불러오기 ---------------- */
+function loadXLSX(){
+  if (window.XLSX) return Promise.resolve();
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload = res; s.onerror = () => rej(new Error('엑셀 처리 도구를 불러오지 못했습니다')); document.head.appendChild(s); });
+}
+function catFromText(v){
+  const t = String(v || '').replace(/\s/g, '');
+  if (!t) return null;
+  const hit = CATEGORIES.find(c => c.id === t || c.name.replace(/\s/g, '') === t); if (hit) return hit.id;
+  if (t.includes('아이디어')) return 'idea';
+  if (t.includes('프로그램')) return 'prog';
+  if (t.includes('생성') || /텍스트|이미지|음원|영상/.test(t)) return 'gen';
+  return null;
+}
+$('#xlsxFile').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+  try {
+    await loadXLSX();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const sheetName = wb.SheetNames.find(n => n.includes('참가명단')) || wb.SheetNames.find(n => !/안내|예시/.test(n)) || wb.SheetNames[0];
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '', raw: false });
+    const hi = rows.findIndex(r => r.some(v => String(v).includes('부문')) && r.some(v => /팀명|이름/.test(String(v))));
+    if (hi < 0) return toast('‘부문’, ‘팀명’ 머리글을 찾지 못했습니다. 내려받은 양식을 사용해 주세요', 'err');
+    const H = rows[hi].map(v => String(v).replace(/\s/g, ''));
+    const col = re => H.findIndex(h => re.test(h));
+    const ci = { cat: col(/부문/), name: col(/팀명|이름/), title: col(/작품/), round: col(/접수|차수/), fix: col(/지정|순서/) };
+    const out = Object.fromEntries(CATEGORIES.map(c => [c.id, []])); const skipped = []; let n = 0;
+    rows.slice(hi + 1).forEach((r, i) => {
+      const name = String(r[ci.name] ?? '').trim(); if (!name) return;
+      const cat = catFromText(r[ci.cat]);
+      if (!cat) { skipped.push(`${hi + i + 2}행(${name})`); return; }
+      const clean = v => String(v ?? '').replace(/\|/g, '/').trim();
+      const round = (String(r[ci.round] ?? '').match(/[12]/) || ['2'])[0];
+      const fix = ci.fix >= 0 ? clean(r[ci.fix]) : '';
+      out[cat].push([clean(name), clean(r[ci.title]), round, fix].filter((v, k) => k < 3 || v).join(' | ')); n++;
+    });
+    if (!n) return toast('불러올 명단이 없습니다. [참가명단] 시트에 입력했는지 확인해 주세요', 'err');
+    for (const c of CATEGORIES) $(`#in-${c.id}`).value = out[c.id].join('\n');
+    updateInfo();
+    toast(`${n}팀을 불러왔습니다` + (skipped.length ? ` · 부문을 알 수 없는 ${skipped.length}행 제외: ${skipped.slice(0, 3).join(', ')}` : ''), skipped.length ? 'err' : '');
+  } catch (err) { toast('엑셀 파일을 읽지 못했습니다: ' + err.message, 'err'); }
+});
 updateInfo();
 </script>
 </body>
