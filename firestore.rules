@@ -11,7 +11,7 @@ service cloud.firestore {
     function access()    { return get(/databases/$(database)/documents/config/access).data; }
     function live()      { return get(/databases/$(database)/documents/state/live).data; }
     function pub()       { return get(/databases/$(database)/documents/config/public).data; }
-    function isSuper()   { return isGoogle() && email() in ['your-admin@gmail.com']; }
+    function isSuper()   { return isGoogle() && email() in ['nh901018-1@nonghyup.com']; }
     function isAdmin()   { return isSuper() || (isGoogle() && email() in access().adminEmails); }
     function isJudge()   { return isGoogle() && email() in access().judgeEmails; }
 
